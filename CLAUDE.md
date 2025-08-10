@@ -1,0 +1,98 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Environment Setup
+
+Set `GEMINI_API_KEY` in `.env.local` for the Oracle (lore) functionality to work.
+
+## Architecture Overview
+
+**Firagle: Oracle of Ashfall** is a React-based 3D fantasy action game built with Three.js and React Three Fiber. The game features first-person view magic combat against rock monsters in a volcanic landscape.
+
+### Core Systems
+
+**Event-Driven Architecture**: Central `eventBus` system coordinates communication between all game components. Key events include `WEAPON_FIRED`, `PLAYER_TOOK_DAMAGE`, `ENEMY_HIT`, `EFFECT_TRIGGERED`, and others defined in `types.ts`.
+
+**Component-Based Entity System**: Game entities (player, enemies, projectiles, effects) are React components that interact through the event bus rather than direct prop passing.
+
+**Animation State Machine**: Weapon behavior is controlled by a finite state machine (`AnimationState` enum) managing Idle → Charging → Charged → Discharging → Decay transitions via `useAnimationStateManager` hook.
+
+**Physics Integration**: Uses Rapier physics engine through `@react-three/rapier` for collision detection, rigid body dynamics, and spatial queries.
+
+### Key Architectural Patterns
+
+**Custom Hook Pattern**: Game logic is encapsulated in hooks:
+- `useAnimationStateManager`: Weapon state transitions and timing
+- `usePlayerState`: Health, shield, score, death state
+- `useEnemyManager`: Enemy spawning, pathfinding, lifecycle
+
+**Procedural Generation**: Terrain uses Perlin noise (`utils/noise.ts`) for heightmaps. Asset placement uses the same heightmap for consistent world generation.
+
+**Gesture Recognition**: Custom gesture recognition system (`utils/gestureRecognizer.ts`) processes mouse/touch input patterns to cast spells defined in `data/gestures.ts`.
+
+**Weapon Schema System**: Type-safe weapon definitions in `data/weapons.ts` support multiple weapon types (Projectile, HitscanChain) with distinct behavior patterns.
+
+### File Organization
+
+```
+components/
+├── effects/      # Visual effects (explosions, lightning, particles)
+├── enemy/        # Rock monster AI and death effects  
+├── logic/        # Game mechanics (projectile handling)
+├── misc/         # Utilities (camera, position tracking)
+├── player/       # First-person view and movement
+├── staff/        # Procedural weapon model generation
+├── ui/           # Game interface and overlays
+└── world/        # Environment (terrain, assets, projectiles)
+
+systems/
+├── EffectsManager.tsx    # Centralized effect spawning/cleanup
+├── assetManager.ts       # Resource loading and caching  
+└── eventBus.ts          # Event coordination hub
+
+data/
+├── weapons.ts      # Weapon configurations and stats
+├── gestures.ts     # Spell gesture templates
+└── assetMap.ts     # Asset loading definitions
+```
+
+### Key Technical Decisions
+
+**No Traditional State Management**: Uses React hooks + event bus instead of Redux/Zustand for better React Three Fiber integration.
+
+**Procedural Staff Generation**: The magical staff ("Firagle") is procedurally generated from mathematical constants in `constants.ts` rather than loading 3D models.
+
+**Touch-First Design**: Supports both desktop (mouse/keyboard) and mobile (touch) with unified input handling through `IS_TOUCH_DEVICE` detection.
+
+**Ref-Based Entity Communication**: Critical game objects use React refs for direct access (player position, staff tip for projectile spawning) while maintaining React patterns.
+
+### Performance Considerations
+
+**Object Pooling**: Projectiles and effects are recycled rather than recreated to minimize garbage collection.
+
+**Conditional Rendering**: Heavy 3D components (effects, enemies) are conditionally rendered based on game state to maintain 60fps.
+
+**Event Bus Error Handling**: All event listeners are wrapped in try-catch to prevent cascading failures.
+
+### External Dependencies
+
+**AI Integration**: Gemini API integration (`services/geminiService.ts`) provides lore responses through the "Oracle" system with appropriate fallback handling.
+
+**Three.js Ecosystem**: Heavily uses `@react-three/drei` for camera controls, environment, and utilities. Physics through `@react-three/rapier`.
