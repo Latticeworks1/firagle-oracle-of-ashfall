@@ -18,13 +18,13 @@ const HeadAssembly = forwardRef<Group, HeadAssemblyProps>(({ animationState }, r
 
     useFrame((_, delta) => {
         if (!lightRef.current) return;
-        const targetIntensity = animationState === AnimationState.Discharging ? 30.0 : 0;
+        const targetIntensity = animationState === AnimationState.Discharging ? 90.0 : 0;
         lightRef.current.intensity = lerp(lightRef.current.intensity, targetIntensity, delta * 15);
     });
 
     return (
         <group ref={ref} position={[0, (STAFF_SHAFT_LENGTH / 2) + (HEAD_ASSEMBLY_HEIGHT / 2), 0]}>
-            <pointLight ref={lightRef} color={COLOR_PROJECTILE} intensity={0} distance={6} decay={2} />
+            <pointLight ref={lightRef} color={COLOR_PROJECTILE} intensity={10} distance={6} decay={2} />
             <Orb animationState={animationState} />
             <Rings animationState={animationState} />
             <AmbientMotes animationState={animationState} />

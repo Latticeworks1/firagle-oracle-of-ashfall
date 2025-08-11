@@ -25,7 +25,7 @@ import { usePlayerState } from './hooks/usePlayerState';
 import { useEnemyManager } from './hooks/useEnemyManager';
 
 // Utils
-import { generateHeightData } from './utils/noise';
+import { generateHeightData, getSafeSpawnPosition } from './utils/noise';
 
 // UI Components
 import FPVUI from './components/ui/FPVUI';
@@ -49,8 +49,17 @@ import RockMonster from './components/enemy/RockMonster';
 import ChargingSigil from './components/effects/ChargingSigil';
 import CameraLookController from './components/misc/CameraLookController';
 import PlayerPositionTracker from './components/misc/PlayerPositionTracker';
+import FPVCameraController from './components/misc/FPVCameraController';
 import ChainLightningHandler from './components/effects/ChainLightningHandler';
 import ProjectileHandler from './components/logic/ProjectileHandler';
+
+// Debug Components
+import ZustandGameTest from './components/debug/ZustandGameTest';
+import PlayerDebugger from './components/debug/PlayerDebugger';
+import PlayerDebugTracker, { type DebugData } from './components/debug/PlayerDebugTracker';
+
+// Zustand Stores - temporarily disabled
+// import { initializeStores } from './stores';
 
 
 const controlMap = [
@@ -119,6 +128,11 @@ const DrawInputHandler: React.FC<{
 
 
 const App: React.FC = () => {
+    // Initialize Zustand stores - temporarily disabled
+    // useEffect(() => {
+    //     initializeStores();
+    // }, []);
+
     // Game State
     const [projectiles, setProjectiles] = useState<Projectile[]>([]);
     const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -140,6 +154,18 @@ const App: React.FC = () => {
     // Touch Controls State
     const [touchMoveInput, setTouchMoveInput] = useState({ x: 0, y: 0 });
     const touchLookInputRef = useRef({ dx: 0, dy: 0 });
+
+    // Debug State
+    const [isDebugVisible, setIsDebugVisible] = useState(false);
+    const [debugData, setDebugData] = useState<DebugData>({
+        position: new THREE.Vector3(),
+        velocity: new THREE.Vector3(),
+        terrainHeight: 0,
+        heightAboveTerrain: 0,
+        isGrounded: false,
+        mass: 0,
+        rotationY: 0
+    });
 
     // Lore Modal State
     const [isLoreModalOpen, setIsLoreModalOpen] = useState(false);
@@ -166,6 +192,7 @@ const App: React.FC = () => {
     );
         
     const heightData = useMemo(() => generateHeightData(), []);
+    const playerSpawnPosition = useMemo(() => getSafeSpawnPosition(heightData), [heightData]);
 
     // Game Logic Callbacks via Event Bus
     const handleExpireProjectile = useCallback((id: string) => setProjectiles(prev => prev.filter(p => p.id !== id)), []);
@@ -287,12 +314,18 @@ const App: React.FC = () => {
         setIsLoreModalOpen(false);
     }, [resetPlayer, resetEnemies, resetState]);
 
+    // Debug data update callback
+    const updateDebugData = useCallback((data: DebugData) => {
+        setDebugData(data);
+    }, []);
+
     // This effect handles the actual firing logic when the animation state changes
     useEffect(() => {
         if (animationState === AnimationState.Discharging) {
+            console.log('App: Firing weapon', { weaponType: equippedWeapon.type, weaponId: equippedWeapon.id });
             setTriggerFire(true);
         }
-    }, [animationState]);
+    }, [animationState, equippedWeapon]);
 
 
     // Keyboard/Mouse Listeners
@@ -322,6 +355,10 @@ const App: React.FC = () => {
             if (event.key.toLowerCase() === 'i' && !isLoreModalOpen) {
                 isInventoryOpen ? setIsInventoryOpen(false) : handleOpenInventory();
             }
+            if (event.key === 'Tab') {
+                event.preventDefault(); // Prevent default tab behavior
+                setIsDebugVisible(!isDebugVisible);
+            }
             if (event.key === 'Escape') {
                 if (isLoreModalOpen) setIsLoreModalOpen(false);
                 if (isInventoryOpen) setIsInventoryOpen(false);
@@ -329,7 +366,7 @@ const App: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isLoreModalOpen, isInventoryOpen, handleOpenLoreModal, handleOpenInventory]);
+    }, [isLoreModalOpen, isInventoryOpen, isDebugVisible, handleOpenLoreModal, handleOpenInventory]);
     
     useEffect(() => { if (!isPointerLocked) resetState(); }, [isPointerLocked, resetState]);
     
@@ -355,11 +392,21 @@ const App: React.FC = () => {
             <FPVUI state={animationState} onExport={exportGLTF} onOpenLoreModal={handleOpenLoreModal}/>
             <GameHUD playerState={playerState} equippedWeapon={equippedWeapon} />
             
+            {/* Player Debugger UI - F3 to toggle */}
+            <PlayerDebugger 
+                debugData={debugData}
+                playerState={playerState}
+                equippedWeapon={equippedWeapon}
+                animationState={animationState}
+                isVisible={isDebugVisible}
+            />
+            
             <KeyboardControls map={controlMap}>
                  <DrawInputHandler startDrawing={startDrawing} endDrawing={endDrawing} />
                  <Canvas camera={{ fov: 75 }} shadows gl={{ antialias: true, powerPreference: 'high-performance' }}>
                      <CameraLookController isPointerLocked={isPointerLocked} touchLookInputRef={touchLookInputRef} />
                      <PlayerPositionTracker playerRef={playerRef} playerPos={playerPos} />
+                     <FPVCameraController playerRef={playerRef} isActive={isPointerLocked || IS_TOUCH_DEVICE} />
                      
                      <Sky sunPosition={[10, 10, 5]} />
                      
@@ -384,9 +431,16 @@ const App: React.FC = () => {
                      <Physics gravity={[0, -20, 0]}>
                         <Ground heightData={heightData} />
                         <ScatteredAssets heightData={heightData} />
-                        <FPVPlayer playerRef={playerRef} touchMoveInput={touchMoveInput} />
+                        <FPVPlayer playerRef={playerRef} touchMoveInput={touchMoveInput} spawnPosition={playerSpawnPosition} />
                         {enemies.map(enemy => <RockMonster key={enemy.id} {...enemy} playerPos={playerPos} />)}
                         <EffectsManager />
+                        
+                        {/* Debug tracker - runs inside Canvas with useFrame */}
+                        <PlayerDebugTracker 
+                            playerRef={playerRef}
+                            heightData={heightData}
+                            onUpdate={updateDebugData}
+                        />
                         {triggerFire && equippedWeapon.type === WeaponType.HitscanChain && (
                            <ChainLightningHandler
                                weaponStats={equippedWeapon.stats}
@@ -412,6 +466,9 @@ const App: React.FC = () => {
             </KeyboardControls>
             
             {IS_TOUCH_DEVICE && !playerState.isDead && <OnScreenControls onMove={setTouchMoveInput} onLook={(vec) => { touchLookInputRef.current = { dx: vec.dx, dy: vec.dy }; }} onFireStart={startCharging} onFireEnd={fire} onDrawStart={startDrawing} onDrawEnd={endDrawing} animationState={animationState} />}
+            
+            {/* Zustand Test Component - temporarily disabled due to infinite loops */}
+            {/* <ZustandGameTest /> */}
         </div>
     );
 };

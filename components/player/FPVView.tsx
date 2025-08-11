@@ -88,7 +88,8 @@ const FPVView: React.FC<FPVViewProps> = ({ staffRef, headRef, equippedWeapon, an
         }
     });
 
-    const isProcedural = equippedWeapon.modelId === 'firagle_staff' || equippedWeapon.modelId === 'staff_of_storms';
+    // Check if weapon uses procedural generation (not loaded assets)
+    const isProcedural = equippedWeapon.modelId.startsWith('procedural_');
 
     useEffect(() => {
         if (isProcedural) {

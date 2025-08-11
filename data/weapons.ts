@@ -7,7 +7,7 @@ export const FIRAGLE_SCHEMA: ProjectileWeaponSchema = {
     type: WeaponType.Projectile,
     name: 'The Firagle',
     description: 'A legendary staff imbued with the essence of a volcano. It hurls condensed fire that explodes on impact.',
-    modelId: 'firagle_staff',
+    modelId: 'procedural_firagle', // Explicitly mark as procedural
     stats: {
         damage: 40,
         splashDamage: 25,
@@ -28,7 +28,7 @@ export const LIGHTNING_STAFF_SCHEMA: ChainWeaponSchema = {
     type: WeaponType.HitscanChain,
     name: 'Staff of Storms',
     description: 'A staff that channels the raw fury of a thunderstorm, instantly striking a foe and arcing to nearby enemies.',
-    modelId: 'staff_of_storms',
+    modelId: 'procedural_lightning_staff', // Explicitly mark as procedural
     stats: {
         damage: 35, // Initial hit damage
         maxChainTargets: 3,

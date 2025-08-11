@@ -18,10 +18,9 @@ const EnergyCoreMaterial = shaderMaterial(
     uIntensity: 1.0,
     uCharge: 0.0,
     uSeed: Math.random() * 1000,
-    uLayers: 8, // Increased from 6 to 8 for finer detail
-    uGlow: 1.0,
-    uRimPower: 2.5, // Slightly reduced from 3.0 for sharper rim effect
-    uChromatic: 0.002 // Reduced from 0.003 for crisper chromatic effect
+    uLayers: 16,
+    uGlow: 9.0,
+    uRimPower: 9.5, 
   },
   `
   varying vec2 vUv;

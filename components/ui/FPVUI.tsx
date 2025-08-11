@@ -28,6 +28,7 @@ const FPVUI: React.FC<FPVUIProps> = ({ state, onExport, onOpenLoreModal }) => {
             <p><span className="font-semibold text-gray-100">Click & Hold:</span> Charge & Fire</p>
             <p><span className="font-semibold text-gray-100">I:</span> Inventory</p>
             <p><span className="font-semibold text-gray-100">T:</span> Ask the Oracle</p>
+            <p><span className="font-semibold text-green-400">Tab:</span> Debug Info</p>
             <p><span className="font-semibold text-gray-100">Esc:</span> Pause / Release Mouse</p>
           </div>
         )}

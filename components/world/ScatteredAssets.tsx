@@ -6,6 +6,7 @@ import { InstancedRigidBodies, CylinderCollider, BallCollider } from '@react-thr
 import { TERRAIN_WIDTH, TERRAIN_HEIGHT, TERRAIN_SCALE, TERRAIN_MAX_ALTITUDE } from '../../constants';
 import type { UserData } from '../../types';
 import { assetManager } from '../../systems/assetManager';
+import { ENVIRONMENT_ASSETS } from '../../data/assetMap';
 
 interface ScatteredAssetsProps {
     heightData: Float32Array;
@@ -48,15 +49,25 @@ const ScatteredAssets: React.FC<ScatteredAssetsProps> = ({ heightData }) => {
     const [processedBush, setProcessedBush] = useState<{ mesh: THREE.Mesh, scaleFactor: number } | null>(null);
 
     useEffect(() => {
-        assetManager.load('petrified_tree').then(model => {
-            const processed = processModel(model, TARGET_TREE_HEIGHT, '#5c473c');
-            if(processed) setProcessedTree(processed);
-        }).catch(console.error);
+        // Load tree asset (currently using rock as placeholder)
+        if (ENVIRONMENT_ASSETS['petrified_tree']) {
+            assetManager.load('petrified_tree').then(model => {
+                const processed = processModel(model, TARGET_TREE_HEIGHT, '#5c473c');
+                if(processed) setProcessedTree(processed);
+            }).catch(error => {
+                console.warn('Failed to load tree asset, terrain will show rocks only:', error);
+            });
+        }
 
-        assetManager.load('latt_bush').then(model => {
-            const processed = processModel(model, TARGET_BUSH_HEIGHT, '#2a4d34');
-            if(processed) setProcessedBush(processed);
-        }).catch(console.error);
+        // Load bush asset
+        if (ENVIRONMENT_ASSETS['latt_bush']) {
+            assetManager.load('latt_bush').then(model => {
+                const processed = processModel(model, TARGET_BUSH_HEIGHT, '#2a4d34');
+                if(processed) setProcessedBush(processed);
+            }).catch(error => {
+                console.warn('Failed to load bush asset, terrain will show rocks only:', error);
+            });
+        }
     }, []);
 
     const { rockInstances, treeInstances, bushInstances } = useMemo(() => {

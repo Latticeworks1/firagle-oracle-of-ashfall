@@ -75,7 +75,7 @@ data/
 
 ### Key Technical Decisions
 
-**No Traditional State Management**: Uses React hooks + event bus instead of Redux/Zustand for better React Three Fiber integration.
+**Hybrid State Management**: Primary game logic uses React hooks + event bus pattern. Zustand is available for complex multiplayer state (see `MultiplayerECS.ts`) but the core game avoids traditional global state for better React Three Fiber integration.
 
 **Procedural Staff Generation**: The magical staff ("Firagle") is procedurally generated from mathematical constants in `constants.ts` rather than loading 3D models.
 
@@ -96,3 +96,32 @@ data/
 **AI Integration**: Gemini API integration (`services/geminiService.ts`) provides lore responses through the "Oracle" system with appropriate fallback handling.
 
 **Three.js Ecosystem**: Heavily uses `@react-three/drei` for camera controls, environment, and utilities. Physics through `@react-three/rapier`.
+
+### Advanced Systems (In Development)
+
+**Puter Cloud Integration**: Database layer (`systems/database/PuterDatabase.ts`) integrates with Puter.com's filesystem for cloud-native multiplayer data persistence, replacing traditional databases.
+
+**Multiplayer ECS Architecture**: Complete Entity-Component-System implementation (`systems/multiplayer/MultiplayerECS.ts`) with:
+- Component-based entities (Transform, Network, Player, Weapon, Projectile)
+- Client-server prediction with rollback
+- Network interpolation for smooth remote player movement  
+- Zustand-based multiplayer state management
+
+**Development and Build Setup**
+
+- **TypeScript Configuration**: Configured for ES2022 with experimental decorators, JSX support, and path aliases (`@/*` maps to project root)
+- **Vite Build System**: Environment variable injection for API keys, path resolution aliases
+- **No Build Tools Required**: Can run directly with `npm run dev` for development, `npm run build` for production
+
+### Development Workflow
+
+**Environment Variables**: Set `GEMINI_API_KEY` in `.env.local` for Oracle functionality. The build system automatically injects this as `process.env.GEMINI_API_KEY`.
+
+**Hot Module Replacement**: Vite provides instant feedback during development with proper React Three Fiber integration.
+
+**Physics Debugging**: Rapier physics engine provides built-in debug rendering - useful for collision detection troubleshooting.
+
+## Important Development Notes
+
+- Never claim functionality works without runtime verification
+- Always test actual user interaction, not just compilation success

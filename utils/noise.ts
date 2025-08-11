@@ -53,10 +53,20 @@ class ImprovedNoise {
 const FREQUENCY = 0.15;
 const ITERATIONS = 5;
 
+// Use consistent seed for terrain persistence
+const TERRAIN_SEED = 42.0; // Fixed seed for consistent terrain
+
+let cachedHeightData: Float32Array | null = null;
+
 export const generateHeightData = (): Float32Array => {
+    // Return cached terrain if already generated
+    if (cachedHeightData) {
+        return cachedHeightData;
+    }
+
     const perlin = new ImprovedNoise();
     const data = new Float32Array(TERRAIN_WIDTH * TERRAIN_HEIGHT);
-    const z = Math.random() * 100;
+    const z = TERRAIN_SEED; // Use fixed seed instead of Math.random()
     let min = Infinity, max = -Infinity;
     for (let j = 0; j < TERRAIN_HEIGHT; j++) {
         for (let i = 0; i < TERRAIN_WIDTH; i++) {
@@ -74,5 +84,38 @@ export const generateHeightData = (): Float32Array => {
     for (let i = 0; i < data.length; i++) {
         data[i] = ((data[i] - min) / range) * TERRAIN_MAX_ALTITUDE;
     }
+    
+    // Cache the generated terrain
+    cachedHeightData = data;
     return data;
+};
+
+// Import constants
+import { TERRAIN_WIDTH, TERRAIN_HEIGHT, TERRAIN_SCALE } from '../constants';
+
+// Utility to get terrain height at world coordinates  
+export const getTerrainHeightAtPosition = (x: number, z: number, heightData: Float32Array): number => {
+    // Terrain spans from -half to +half in world coordinates
+    const halfWidth = (TERRAIN_WIDTH * TERRAIN_SCALE) / 2;
+    const halfHeight = (TERRAIN_HEIGHT * TERRAIN_SCALE) / 2;
+    
+    // Convert world coordinates to terrain indices (0 to TERRAIN_WIDTH-1)
+    const ix = Math.floor(((x + halfWidth) / (TERRAIN_WIDTH * TERRAIN_SCALE)) * TERRAIN_WIDTH);
+    const iz = Math.floor(((z + halfHeight) / (TERRAIN_HEIGHT * TERRAIN_SCALE)) * TERRAIN_HEIGHT);
+    
+    // Clamp to terrain bounds
+    const clampedX = Math.max(0, Math.min(ix, TERRAIN_WIDTH - 1));
+    const clampedZ = Math.max(0, Math.min(iz, TERRAIN_HEIGHT - 1));
+    
+    const index = clampedZ * TERRAIN_WIDTH + clampedX;
+    return heightData[index] || 0;
+};
+
+// Get a safe spawn position at center of terrain
+export const getSafeSpawnPosition = (heightData: Float32Array): [number, number, number] => {
+    const centerHeight = getTerrainHeightAtPosition(0, 0, heightData);
+    console.log('Spawn calculation - Center height:', centerHeight, 'Spawn Y:', centerHeight + 3);
+    
+    // Spawn 3 units above terrain center (extra height for safety)
+    return [0, centerHeight + 3, 0];
 };

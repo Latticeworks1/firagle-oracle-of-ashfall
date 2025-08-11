@@ -22,9 +22,12 @@ const ChainLightningHandler: React.FC<ChainLightningHandlerProps> = ({ weaponSta
     
     useEffect(() => {
         if (!staffTipRef.current) {
+            console.warn('ChainLightningHandler: staffTipRef.current is null, aborting');
             onComplete();
             return;
         };
+        
+        console.log('ChainLightningHandler: Executing lightning attack', { staffTip: staffTipRef.current });
 
         const chainPoints: THREE.Vector3[] = [];
         const hitEnemyIds = new Set<string>();

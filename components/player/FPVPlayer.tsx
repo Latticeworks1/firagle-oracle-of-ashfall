@@ -7,13 +7,15 @@ import { useKeyboardControls } from '@react-three/drei';
 import type { Controls, UserData } from '../../types';
 import { Controls as ControlsEnum } from '../../types';
 import { MOVEMENT_SPEED } from '../../constants';
+import { eventBus } from '../../systems/eventBus';
 
 interface FPVPlayerProps {
     playerRef: React.RefObject<RapierRigidBody>;
     touchMoveInput: { x: number; y: number };
+    spawnPosition?: [number, number, number];
 }
 
-const FPVPlayer: React.FC<FPVPlayerProps> = ({ playerRef, touchMoveInput }) => {
+const FPVPlayer: React.FC<FPVPlayerProps> = ({ playerRef, touchMoveInput, spawnPosition = [0, 35, 0] }) => {
     const [, getControls] = useKeyboardControls<ControlsEnum>();
     const frontVector = useMemo(() => new THREE.Vector3(), []);
     const sideVector = useMemo(() => new THREE.Vector3(), []);
@@ -32,19 +34,32 @@ const FPVPlayer: React.FC<FPVPlayerProps> = ({ playerRef, touchMoveInput }) => {
         frontVector.set(0, 0, f + touchMoveInput.y);
         sideVector.set(s + touchMoveInput.x, 0, 0);
 
-        direction.subVectors(frontVector, sideVector).normalize().multiplyScalar(MOVEMENT_SPEED).applyEuler(state.camera.rotation);
+        direction.addVectors(frontVector, sideVector);
         
-        const currentVel = playerRef.current.linvel();
-        speedVec.set(direction.x, currentVel.y, direction.z);
-        playerRef.current.setLinvel(speedVec, true);
+        // Only apply movement if there's input
+        if (direction.length() > 0) {
+            direction.normalize().multiplyScalar(MOVEMENT_SPEED).applyEuler(state.camera.rotation);
+            
+            const currentVel = playerRef.current.linvel();
+            speedVec.set(direction.x, currentVel.y, direction.z);
+            playerRef.current.setLinvel(speedVec, true);
+        } else {
+            // Stop horizontal movement if no input
+            const currentVel = playerRef.current.linvel();
+            speedVec.set(0, currentVel.y, 0);
+            playerRef.current.setLinvel(speedVec, true);
+        }
         
+        // Emit position update for other systems (not camera - camera follows directly)
         const worldPos = playerRef.current.translation();
-        state.camera.position.set(worldPos.x, worldPos.y + 0.9, worldPos.z);
+        eventBus.dispatch('PLAYER_POSITION_UPDATED', { 
+            position: new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z) 
+        });
     });
 
     return (
-        <RigidBody ref={playerRef} colliders={false} mass={1} type="dynamic" enabledRotations={[false, false, false]} position={[0, 35, 0]} userData={userData}>
-            <CapsuleCollider args={[0.7, 0.4]} />
+        <RigidBody ref={playerRef} colliders={false} mass={1} type="dynamic" enabledRotations={[false, true, false]} position={spawnPosition} userData={userData}>
+            <CapsuleCollider args={[0.9, 0.4]} />
         </RigidBody>
     );
 };
