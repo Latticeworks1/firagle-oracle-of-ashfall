@@ -1,10 +1,10 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. Oracle feature will be disabled.");
+  console.warn("GEMINI_API_KEY environment variable not set. Oracle feature will be disabled.");
 }
 
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
@@ -21,17 +21,20 @@ export const askOracle = async (query: string): Promise<string> => {
   }
   
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: query,
-      config: { 
-        systemInstruction: SYSTEM_INSTRUCTION,
+    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const result = await model.generateContent({
+      contents: [{
+        role: 'user', 
+        parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser Query: ${query}` }]
+      }],
+      generationConfig: {
         temperature: 0.7,
         topP: 0.9,
-      }
+        maxOutputTokens: 150,
+      },
     });
     
-    return response.text;
+    return result.response.text();
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw new Error("The Oracle is silent at this moment. The connection to the aether is weak.");

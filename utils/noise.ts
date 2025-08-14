@@ -1,5 +1,5 @@
 
-import { TERRAIN_WIDTH, TERRAIN_HEIGHT, TERRAIN_MAX_ALTITUDE } from '../constants';
+import { TERRAIN_WIDTH, TERRAIN_HEIGHT, TERRAIN_MAX_ALTITUDE, TERRAIN_SCALE } from '../constants';
 
 class ImprovedNoise {
     private p: number[] = new Array(512);
@@ -90,8 +90,6 @@ export const generateHeightData = (): Float32Array => {
     return data;
 };
 
-// Import constants
-import { TERRAIN_WIDTH, TERRAIN_HEIGHT, TERRAIN_SCALE } from '../constants';
 
 // Utility to get terrain height at world coordinates  
 export const getTerrainHeightAtPosition = (x: number, z: number, heightData: Float32Array): number => {

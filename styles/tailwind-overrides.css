@@ -1,0 +1,111 @@
+/* Tailwind CSS Overrides - Force unified design system */
+/* This file ensures our unified system takes precedence over Tailwind */
+
+/* Override Tailwind color utilities with unified tokens */
+.text-gray-300 {
+  color: var(--firagle-secondary) !important;
+}
+
+.bg-black\/50 {
+  background: var(--bg-surface) !important;
+}
+
+.text-sm {
+  font-size: 0.875rem !important;
+  font-family: var(--font-mono) !important;
+}
+
+/* Override Tailwind spacing with unified scale */
+.w-full {
+  width: 100% !important;
+}
+
+.h-full {
+  height: 100% !important;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+/* Override Tailwind transitions with unified system */
+.transition-all {
+  transition: var(--transition-normal) !important;
+}
+
+.duration-300 {
+  transition-duration: var(--transition-normal) !important;
+}
+
+.ease-out {
+  transition-timing-function: ease-out !important;
+}
+
+/* Override absolute positioning */
+.absolute {
+  position: absolute !important;
+}
+
+.inset-0 {
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+}
+
+/* Font family overrides */
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+.leading-relaxed {
+  line-height: 1.6 !important;
+}
+
+/* Important: Force unified button styles over Tailwind */
+button[class*="btn"] {
+  font-family: var(--font-body) !important;
+  border: var(--border-secondary) !important;
+  border-radius: var(--radius-md) !important;
+  transition: var(--transition-normal) !important;
+}
+
+/* Force unified input styles */
+input[class*="input"] {
+  font-family: var(--font-body) !important;
+  background: var(--bg-input) !important;
+  border: var(--border-secondary) !important;
+  color: white !important;
+}
+
+/* Force unified panel styles */
+div[class*="panel"] {
+  background: var(--bg-panel) !important;
+  border: var(--border-primary) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+/* Disable Tailwind preflight that conflicts with our system */
+*, ::before, ::after {
+  border-color: var(--firagle-secondary) !important;
+}
+
+/* Force consistent typography hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading) !important;
+  color: var(--firagle-primary) !important;
+}
+
+/* Override any remaining Tailwind utilities that conflict */
+[class*="bg-"] {
+  background: var(--bg-panel) !important;
+}
+
+[class*="text-"] {
+  color: var(--firagle-primary) !important;
+}
+
+[class*="border-"] {
+  border-color: var(--firagle-secondary) !important;
+}

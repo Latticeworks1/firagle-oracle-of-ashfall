@@ -52,9 +52,9 @@ export const PROJECTILE_LIFESPAN = 3000; // ms
 export const PLAYER_MAX_HEALTH = 100;
 export const MOVEMENT_SPEED = 5;
 
-// Enemies
-export const ENEMY_MAX_COUNT = 15;
-export const ENEMY_SPAWN_INTERVAL = 4000; // ms
+// Enemies - Reduced for performance
+export const ENEMY_MAX_COUNT = 8;
+export const ENEMY_SPAWN_INTERVAL = 6000; // ms
 export const ENEMY_MAX_HEALTH = 100;
 export const ENEMY_SPEED = 1.5;
 export const ENEMY_DAMAGE = 10;
@@ -62,8 +62,8 @@ export const ENEMY_ATTACK_COOLDOWN = 1000; // ms
 export const ENEMY_ATTACK_RANGE = 1.8;
 export const ENEMY_AGGRO_RANGE = 25;
 
-// World
-export const TERRAIN_WIDTH = 256;
-export const TERRAIN_HEIGHT = 256;
+// World - Reduced for performance
+export const TERRAIN_WIDTH = 128;
+export const TERRAIN_HEIGHT = 128;
 export const TERRAIN_MAX_ALTITUDE = 25.0;
-export const TERRAIN_SCALE = 1.5;
+export const TERRAIN_SCALE = 2.0;

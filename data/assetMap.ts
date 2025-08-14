@@ -3,11 +3,9 @@
  * Separated by asset category to maintain semantic clarity.
  */
 
-// Environment assets only - for terrain decoration
+// Environment assets - using procedural geometry instead of heavy GLB files
 export const ENVIRONMENT_ASSETS: Record<string, string> = {
-    'petrified_tree': '/models/latt-rock1-glb.glb', // TODO: Replace with actual tree model
-    'latt_bush': '/models/latt-bush.glb',
-    'rock_formation': '/models/latt-rock1-glb.glb',
+    // Removed heavy GLB files - using procedural geometry in ScatteredAssets instead
 };
 
 // Character/NPC assets - not used for weapons  

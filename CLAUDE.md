@@ -121,7 +121,24 @@ data/
 
 **Physics Debugging**: Rapier physics engine provides built-in debug rendering - useful for collision detection troubleshooting.
 
-## Important Development Notes
+## Critical Development Rules
 
-- Never claim functionality works without runtime verification
-- Always test actual user interaction, not just compilation success
+**Testing Requirements**: Never claim functionality "works" without runtime verification. Compilation success != working code. Always test actual user interactions - gestures, weapon firing, physics, collision detection.
+
+**Code Quality Standards**: Fix all TypeScript warnings and errors before claiming completion. Warnings indicate real issues that will cause runtime failures.
+
+**Debug & Verification**: Use Tab key to toggle debug mode showing player position, velocity, terrain height, and physics state. Essential for verifying movement, collision, and terrain interaction.
+
+**Build Verification**: Always run `npm run build` after significant changes to catch production-specific issues like missing environment variables or import errors.
+
+## Testing Specific Systems
+
+**Weapon System Testing**: Each weapon type has distinct behavior patterns - test both Projectile (Firagle) and HitscanChain (Lightning Staff) weapons. Verify charging animations, projectile spawning, and damage application.
+
+**Gesture Recognition**: Test both mouse gesture drawing (right-click + drag) and touch gestures. Verify fire_nova and protective_ward spells trigger correctly with proper visual feedback.
+
+**Physics Integration**: Test player movement on terrain, collision with enemies and environment objects. Verify heightmap-based spawn positioning and terrain collision.
+
+**Touch vs Desktop**: The game has completely different input handling for touch devices. Test both modes - desktop uses PointerLockControls, touch uses OnScreenControls.
+
+**Map Loading**: Terrain generation is async via CachedMapLoader. Test scenarios where terrain hasn't loaded yet (fallback ground should appear).

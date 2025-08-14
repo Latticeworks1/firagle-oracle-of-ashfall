@@ -18,33 +18,57 @@ const FPVUI: React.FC<FPVUIProps> = ({ state, onExport, onOpenLoreModal }) => {
 
   return (
     <>
-      <div className="absolute top-4 left-4 z-10 p-3 md:p-4 bg-black/50 rounded-xl shadow-xl backdrop-blur-sm pointer-events-none text-white max-w-xs md:max-w-sm">
-        <h1 className="text-xl md:text-2xl font-bold text-orange-300 mb-2 tracking-wider drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">The Firagle</h1>
+      <div className="hud-panel hud-panel--top-left hud-panel--primary">
+        <div className="hud-info">
+          <h1 className="hud-info__title">The Firagle</h1>
         
-        {!IS_TOUCH_DEVICE && (
-          <div className="hidden sm:block space-y-1 text-gray-300 text-sm">
-            <p><span className="font-semibold text-gray-100">WASD:</span> Move</p>
-            <p><span className="font-semibold text-gray-100">Mouse:</span> Look</p>
-            <p><span className="font-semibold text-gray-100">Click & Hold:</span> Charge & Fire</p>
-            <p><span className="font-semibold text-gray-100">I:</span> Inventory</p>
-            <p><span className="font-semibold text-gray-100">T:</span> Ask the Oracle</p>
-            <p><span className="font-semibold text-green-400">Tab:</span> Debug Info</p>
-            <p><span className="font-semibold text-gray-100">Esc:</span> Pause / Release Mouse</p>
+          {!IS_TOUCH_DEVICE && (
+            <div className="hud-info__controls">
+              <div className="hud-control-group">
+                <span className="hud-control__key">WASD</span>
+                <span className="hud-control__action">Move</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">Mouse</span>
+                <span className="hud-control__action">Look</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">Click & Hold</span>
+                <span className="hud-control__action">Charge & Fire</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">I</span>
+                <span className="hud-control__action">Inventory</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">T</span>
+                <span className="hud-control__action">Ask the Oracle</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">Tab</span>
+                <span className="hud-control__action">Debug Info</span>
+              </div>
+              <div className="hud-control-group">
+                <span className="hud-control__key">Esc</span>
+                <span className="hud-control__action">Pause / Release Mouse</span>
+              </div>
+            </div>
+          )}
+        
+          <div className="hud-info__actions">
+            <button onClick={onExport} className="hud-button hud-button--export hud-button--small">Export Staff (.glb)</button>
+            <button onClick={onOpenLoreModal} className="hud-button hud-button--oracle hud-button--small">Ask the Oracle</button>
           </div>
-        )}
         
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-3">
-          <button onClick={onExport} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 pointer-events-auto shadow-lg">Export Staff (.glb)</button>
-          <button onClick={onOpenLoreModal} className="px-3 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-md hover:bg-purple-500 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-opacity-75 pointer-events-auto shadow-lg">Ask the Oracle</button>
+          <div className={`hud-status hud-status--${state === AnimationState.Charging ? 'charging' : state === AnimationState.Charged ? 'charged' : state === AnimationState.Discharging ? 'discharging' : 'idle'}`}>
+            <span className="hud-status__label">Weapon State</span>
+            <span className="hud-status__value">{stateText}</span>
+          </div>
         </div>
-        
-        <p className={`mt-3 text-base md:text-lg font-mono tracking-widest ${stateColor} transition-colors duration-300`}>
-          STATE: {stateText}
-        </p>
       </div>
       
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-3xl pointer-events-none opacity-50 drop-shadow-[0_0_3px_#000]">
-        +
+      <div className="hud-crosshair">
+        <div className="hud-crosshair__reticle">+</div>
       </div>
     </>
   );

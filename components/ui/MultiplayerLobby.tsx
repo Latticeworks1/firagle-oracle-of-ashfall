@@ -202,7 +202,7 @@ const MultiplayerLobby: React.FC = () => {
 
   if (state.loading) {
     return (
-      <div className="lobby-container">
+      <div className="container">
         <h1 className="title">FIRAGLE MULTIPLAYER</h1>
         <div className="loading-section">
           <div className="loading-spinner" />
@@ -213,17 +213,17 @@ const MultiplayerLobby: React.FC = () => {
   }
 
   return (
-    <div className="lobby-container">
+    <div className="container">
       <h1 className="title">FIRAGLE MULTIPLAYER</h1>
       
-      <div className="section auth-section">
-        <h2>Player Authentication</h2>
+      <div className="panel panel--medium">
+        <h2 className="heading">Player Authentication</h2>
         {state.isSignedIn ? (
           <div className="auth-status">Welcome, {state.playerData?.username}!</div>
         ) : (
           <div>
             <div className="auth-status">Not signed in</div>
-            <button className="button" onClick={signIn}>
+            <button className="btn btn--primary" onClick={signIn}>
               Sign In with Puter
             </button>
           </div>
@@ -231,8 +231,8 @@ const MultiplayerLobby: React.FC = () => {
       </div>
 
       {state.isSignedIn && (
-        <div className="section lobby-section">
-          <h2>Game Lobby</h2>
+        <div className="panel panel--large">
+          <h2 className="heading">Game Lobby</h2>
           
           <div className="create-game-section">
             <h3>Create New Game</h3>
@@ -264,7 +264,7 @@ const MultiplayerLobby: React.FC = () => {
                   onChange={(e) => handleInputChange('maxPlayers', parseInt(e.target.value) || 4)}
                 />
               </div>
-              <button className="button primary" onClick={createGame}>
+              <button className="btn btn--primary" onClick={createGame}>
                 Create Game
               </button>
             </div>
@@ -285,7 +285,7 @@ const MultiplayerLobby: React.FC = () => {
                       </div>
                     </div>
                     <button 
-                      className="button secondary" 
+                      className="btn btn--info" 
                       onClick={() => joinGame(game.id)}
                       disabled={game.currentPlayers >= game.maxPlayers}
                     >
@@ -295,15 +295,15 @@ const MultiplayerLobby: React.FC = () => {
                 ))
               )}
             </div>
-            <button className="button secondary" onClick={loadGames}>
+            <button className="btn btn--info" onClick={loadGames}>
               Refresh Games
             </button>
           </div>
         </div>
       )}
 
-      <div className="status-section">
-        <div className="status">{state.status}</div>
+      <div style={{marginTop: 'var(--space-xl)', width: '100%', maxWidth: '800px'}}>
+        <div className="panel panel--small" style={{textAlign: 'center', fontWeight: 'bold'}}>{state.status}</div>
       </div>
     </div>
   );

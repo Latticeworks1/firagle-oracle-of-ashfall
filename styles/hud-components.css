@@ -1,0 +1,161 @@
+/* HUD Component Styles - Minimal and Clean */
+/* Uses unified design system as foundation */
+
+/* HUD-specific component overrides only */
+.hud-vitals__score-value {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 28px;
+  color: var(--firagle-primary);
+  text-shadow: var(--text-shadow-primary);
+  letter-spacing: 3px;
+  background: linear-gradient(45deg, 
+    var(--firagle-primary) 0%, 
+    var(--firagle-primary-light) 50%, 
+    var(--firagle-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: score-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes score-glow {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.3) drop-shadow(0 0 10px var(--firagle-primary)); }
+}
+
+.hud-weapon__name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--firagle-primary);
+  text-shadow: var(--text-shadow-primary);
+  margin-bottom: var(--space-sm);
+  text-decoration: underline;
+  text-decoration-color: var(--firagle-accent);
+}
+
+.hud-weapon__stats {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--firagle-secondary);
+  text-shadow: var(--text-shadow-simple);
+}
+
+.hud-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: 12px 20px;
+  background: linear-gradient(45deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(40, 40, 40, 0.6) 50%,
+    rgba(0, 0, 0, 0.8) 100%);
+  border: 2px solid var(--firagle-accent);
+  border-radius: 25px;
+  margin-top: var(--space-lg);
+}
+
+.hud-status__value {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 16px;
+  text-shadow: var(--text-shadow-primary);
+  transition: var(--transition-normal);
+}
+
+/* Animation state variants */
+.hud-status--idle .hud-status__value {
+  color: var(--firagle-secondary);
+}
+
+.hud-status--charging .hud-status__value {
+  color: var(--firagle-primary-light);
+  animation: charging-pulse 0.8s ease-in-out infinite;
+}
+
+.hud-status--charged .hud-status__value {
+  color: var(--firagle-success);
+  text-shadow: var(--shadow-glow);
+}
+
+.hud-status--discharging .hud-status__value {
+  color: var(--firagle-danger);
+  animation: discharge-flicker 0.2s ease-in-out infinite;
+}
+
+@keyframes charging-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+@keyframes discharge-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Critical state animation */
+.progress-bar--critical {
+  animation: critical-pulse 1s ease-in-out infinite;
+  border-color: var(--firagle-danger);
+}
+
+@keyframes critical-pulse {
+  0%, 100% { 
+    box-shadow: 
+      inset 0 0 10px rgba(0, 0, 0, 0.8),
+      0 0 15px rgba(220, 20, 60, 0.5);
+  }
+  50% { 
+    box-shadow: 
+      inset 0 0 10px rgba(0, 0, 0, 0.8),
+      0 0 25px rgba(220, 20, 60, 0.8);
+  }
+}
+
+/* Entrance animations */
+.panel--bottom-left {
+  animation: slide-in-left 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.panel--bottom-right {
+  animation: slide-in-right 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.panel--top-left {
+  animation: slide-in-top 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -89,64 +89,35 @@ const OnScreenControls: React.FC<OnScreenControlsProps> = ({ onMove, onLook, onF
     }, [touchState, onMove]);
 
     const isCharging = animationState === AnimationState.Charging || animationState === AnimationState.Charged;
-    const fireButtonClasses = [
-        "absolute right-6 bottom-6 w-24 h-24 rounded-full text-white font-bold text-lg tracking-wider transition-all duration-200 shadow-lg active:scale-95",
-        "bg-red-800/60 border-2 border-red-500/80 backdrop-blur-sm",
-        isCharging ? "animate-pulse-strong ring-4 ring-orange-400" : ""
-    ].join(" ");
     
     return (
         <div 
-            className="absolute inset-0 z-20"
+            className="touch-controls"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
             <div ref={lookAreaRef} className="absolute inset-0 w-full h-full"></div>
 
-            <div
-                ref={joystickRef}
-                className="absolute left-6 bottom-6 w-32 h-32 bg-black/30 rounded-full border-2 border-gray-500/50 flex items-center justify-center pointer-events-auto"
-            >
-                <div 
-                    ref={thumbstickRef}
-                    className="w-16 h-16 bg-gray-400/50 rounded-full border-2 border-gray-300/60 transition-transform duration-75 pointer-events-none"
-                ></div>
+            <div ref={joystickRef} className="touch-joystick">
+                <div ref={thumbstickRef} className="touch-joystick-thumb"></div>
             </div>
 
-             <button
+            <button
                 onTouchStart={onDrawStart}
                 onTouchEnd={onDrawEnd}
-                className="absolute left-[calc(24px+128px+24px)] bottom-14 w-20 h-20 rounded-full text-white font-bold tracking-wider transition-all duration-200 shadow-lg active:scale-95 bg-purple-800/60 border-2 border-purple-500/80 backdrop-blur-sm"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+                className="touch-button touch-button--draw"
             >
                 DRAW
             </button>
 
-
             <button
                 onTouchStart={onFireStart}
                 onTouchEnd={onFireEnd}
-                className={fireButtonClasses}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+                className={`touch-button touch-button--fire ${isCharging ? 'touch-button--charging' : ''}`}
             >
                 FIRE
             </button>
-            <style>{`
-                .animate-pulse-strong {
-                    animation: pulse-strong 1.5s infinite;
-                }
-                @keyframes pulse-strong {
-                    0%, 100% {
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7);
-                    }
-                    50% {
-                        transform: scale(1.05);
-                        box-shadow: 0 0 10px 15px rgba(251, 146, 60, 0);
-                    }
-                }
-            `}</style>
         </div>
     );
 };

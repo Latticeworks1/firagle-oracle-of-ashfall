@@ -1,5 +1,7 @@
 
 
+import './styles/hud.css';
+
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
@@ -25,7 +27,10 @@ import { usePlayerState } from './hooks/usePlayerState';
 import { useEnemyManager } from './hooks/useEnemyManager';
 
 // Utils
-import { generateHeightData, getSafeSpawnPosition } from './utils/noise';
+import { getSafeSpawnPosition } from './utils/noise';
+
+// Map System
+import CachedMapLoader from './components/world/CachedMapLoader';
 
 // UI Components
 import FPVUI from './components/ui/FPVUI';
@@ -36,20 +41,19 @@ import OnScreenControls from './components/ui/OnScreenControls';
 import InventoryUI from './components/ui/InventoryUI';
 import GameHUD from './components/ui/GameHUD';
 import GestureDrawCanvas from './components/ui/GestureDrawCanvas';
+import PauseMenu from './components/ui/PauseMenu';
+import SimplePlayerProfileUI from './components/ui/SimplePlayerProfileUI';
 
 // 3D Components
 import { Physics } from '@react-three/rapier';
 import EffectsManager from './systems/EffectsManager';
-import FPVPlayer from './components/player/FPVPlayer';
+import UnifiedPlayerController from './components/player/UnifiedPlayerController';
 import FPVView from './components/player/FPVView';
 import Ground from './components/world/Ground';
 import ScatteredAssets from './components/world/ScatteredAssets';
 import Fireball from './components/world/Fireball';
 import RockMonster from './components/enemy/RockMonster';
 import ChargingSigil from './components/effects/ChargingSigil';
-import CameraLookController from './components/misc/CameraLookController';
-import PlayerPositionTracker from './components/misc/PlayerPositionTracker';
-import FPVCameraController from './components/misc/FPVCameraController';
 import ChainLightningHandler from './components/effects/ChainLightningHandler';
 import ProjectileHandler from './components/logic/ProjectileHandler';
 
@@ -167,11 +171,13 @@ const App: React.FC = () => {
         rotationY: 0
     });
 
-    // Lore Modal State
+    // UI Modal States
     const [isLoreModalOpen, setIsLoreModalOpen] = useState(false);
     const [loreResponse, setLoreResponse] = useState("Ask a question about this world...");
     const [isLoreLoading, setIsLoreLoading] = useState(false);
     const [loreError, setLoreError] = useState("");
+    const [isPauseMenuOpen, setIsPauseMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Custom Hooks
     const equippedWeapon = useMemo(() => inventory.find(w => w.id === equippedWeaponId) || inventory[0], [inventory, equippedWeaponId]);
@@ -186,13 +192,20 @@ const App: React.FC = () => {
     const damageFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const playerPos = useRef(new THREE.Vector3()).current;
 
+    // Map State
+    const [heightData, setHeightData] = useState<Float32Array | null>(null);
+    const [isMapLoaded, setIsMapLoaded] = useState(false);
+
     const { enemies, resetEnemies } = useEnemyManager(
-        (isPointerLocked || IS_TOUCH_DEVICE) && !playerState.isDead && !isLoreModalOpen && !isInventoryOpen,
+        (isPointerLocked || IS_TOUCH_DEVICE) && !playerState.isDead && !isLoreModalOpen && !isInventoryOpen && !isPauseMenuOpen && !isProfileOpen && isMapLoaded,
         playerPos
     );
         
-    const heightData = useMemo(() => generateHeightData(), []);
-    const playerSpawnPosition = useMemo(() => getSafeSpawnPosition(heightData), [heightData]);
+    const playerSpawnPosition = useMemo(() => {
+        if (!heightData) return new THREE.Vector3(0, 10, 0);
+        const [x, y, z] = getSafeSpawnPosition(heightData);
+        return new THREE.Vector3(x, y, z);
+    }, [heightData]);
 
     // Game Logic Callbacks via Event Bus
     const handleExpireProjectile = useCallback((id: string) => setProjectiles(prev => prev.filter(p => p.id !== id)), []);
@@ -232,12 +245,12 @@ const App: React.FC = () => {
     
     // Drawing Handlers
     const startDrawing = useCallback(() => {
-      if (playerState.isDead || isInventoryOpen || isLoreModalOpen) return;
+      if (playerState.isDead || isInventoryOpen || isLoreModalOpen || isPauseMenuOpen || isProfileOpen) return;
       if (controlsRef.current?.isLocked) controlsRef.current.unlock();
       setDrawnPoints([]);
       drawnPointsRef.current = [];
       setIsDrawing(true);
-    }, [playerState.isDead, isInventoryOpen, isLoreModalOpen]);
+    }, [playerState.isDead, isInventoryOpen, isLoreModalOpen, isPauseMenuOpen, isProfileOpen]);
 
     const endDrawing = useCallback(() => {
       setIsDrawing(false);
@@ -268,10 +281,10 @@ const App: React.FC = () => {
     }, []);
 
     const requestPointerLock = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-        if (isDrawing || isLoreModalOpen || isInventoryOpen || controlsRef.current?.isLocked || playerState.isDead) return;
+        if (isDrawing || isLoreModalOpen || isInventoryOpen || isPauseMenuOpen || isProfileOpen || controlsRef.current?.isLocked || playerState.isDead) return;
         if ((event.target as HTMLElement).closest('button, [role="dialog"], .inventory-panel')) return;
         controlsRef.current?.lock();
-    }, [isDrawing, isLoreModalOpen, isInventoryOpen, playerState.isDead]);
+    }, [isDrawing, isLoreModalOpen, isInventoryOpen, isPauseMenuOpen, isProfileOpen, playerState.isDead]);
 
     const exportGLTF = useCallback(() => {
         if (!staffRef.current) return alert("Weapon model not ready.");
@@ -314,6 +327,14 @@ const App: React.FC = () => {
         setIsLoreModalOpen(false);
     }, [resetPlayer, resetEnemies, resetState]);
 
+    // Map loading callback
+    const handleMapLoaded = useCallback((loadedHeightData: Float32Array) => {
+        setHeightData(loadedHeightData);
+        setIsMapLoaded(true);
+        console.log('Map loaded successfully with heightData length:', loadedHeightData.length);
+        console.log('Player spawn position:', playerSpawnPosition);
+    }, [playerSpawnPosition]);
+
     // Debug data update callback
     const updateDebugData = useCallback((data: DebugData) => {
         setDebugData(data);
@@ -351,9 +372,12 @@ const App: React.FC = () => {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (document.activeElement?.tagName === 'INPUT') return;
-            if (event.key.toLowerCase() === 't' && !isLoreModalOpen && !isInventoryOpen) handleOpenLoreModal();
-            if (event.key.toLowerCase() === 'i' && !isLoreModalOpen) {
+            if (event.key.toLowerCase() === 't' && !isLoreModalOpen && !isInventoryOpen && !isPauseMenuOpen && !isProfileOpen) handleOpenLoreModal();
+            if (event.key.toLowerCase() === 'i' && !isLoreModalOpen && !isPauseMenuOpen && !isProfileOpen) {
                 isInventoryOpen ? setIsInventoryOpen(false) : handleOpenInventory();
+            }
+            if (event.key.toLowerCase() === 'p' && !isLoreModalOpen && !isInventoryOpen && !isPauseMenuOpen) {
+                isProfileOpen ? setIsProfileOpen(false) : setIsProfileOpen(true);
             }
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent default tab behavior
@@ -361,17 +385,23 @@ const App: React.FC = () => {
             }
             if (event.key === 'Escape') {
                 if (isLoreModalOpen) setIsLoreModalOpen(false);
-                if (isInventoryOpen) setIsInventoryOpen(false);
+                else if (isInventoryOpen) setIsInventoryOpen(false);
+                else if (isProfileOpen) setIsProfileOpen(false);
+                else if (isPauseMenuOpen) setIsPauseMenuOpen(false);
+                else setIsPauseMenuOpen(true); // Open pause menu if nothing else is open
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isLoreModalOpen, isInventoryOpen, isDebugVisible, handleOpenLoreModal, handleOpenInventory]);
+    }, [isLoreModalOpen, isInventoryOpen, isPauseMenuOpen, isProfileOpen, isDebugVisible, handleOpenLoreModal, handleOpenInventory]);
     
     useEffect(() => { if (!isPointerLocked) resetState(); }, [isPointerLocked, resetState]);
     
+    // Debug output
+    console.log('Render state:', { isMapLoaded, heightDataLength: heightData?.length, playerSpawnPosition, isPointerLocked });
+
     return (
-        <div id="game-container" className="w-screen h-screen relative bg-black" onClickCapture={requestPointerLock}>
+        <div id="game-container" className="game-viewport" onClickCapture={requestPointerLock}>
             <GestureHandler 
                 isDrawing={isDrawing} 
                 setDrawnPoints={ (updater) => {
@@ -384,63 +414,116 @@ const App: React.FC = () => {
 
             <LoreModal isOpen={isLoreModalOpen} onClose={() => setIsLoreModalOpen(false)} onAsk={handleAskOracle} response={loreResponse} isLoading={isLoreLoading} error={loreError}/>
             <InventoryUI isOpen={isInventoryOpen} onClose={() => setIsInventoryOpen(false)} inventory={inventory} equippedWeaponId={equippedWeaponId} onEquip={setEquippedWeaponId} />
+            <PauseMenu 
+                isOpen={isPauseMenuOpen} 
+                onClose={() => setIsPauseMenuOpen(false)}
+                onExport={exportGLTF}
+                onOpenLoreModal={handleOpenLoreModal}
+                onOpenInventory={handleOpenInventory}
+                onOpenProfile={() => setIsProfileOpen(true)}
+            />
+            <SimplePlayerProfileUI 
+                isOpen={isProfileOpen} 
+                onClose={() => setIsProfileOpen(false)} 
+            />
 
-            <div className="absolute inset-0 z-20 pointer-events-none bg-red-600 transition-opacity duration-500" style={{ opacity: damageFlash }} />
+            <div className="damage-flash" style={{ opacity: damageFlash }} />
             {playerState.isDead && <GameOverScreen score={playerState.score} onRestart={resetGame} />}
             {!isPointerLocked && !playerState.isDead && !isLoreModalOpen && !isInventoryOpen && !IS_TOUCH_DEVICE && <StartScreen />}
             
-            <FPVUI state={animationState} onExport={exportGLTF} onOpenLoreModal={handleOpenLoreModal}/>
-            <GameHUD playerState={playerState} equippedWeapon={equippedWeapon} />
+            <GameHUD 
+                playerState={playerState} 
+                equippedWeapon={equippedWeapon}
+                animationState={animationState}
+                onExport={exportGLTF}
+                onOpenLoreModal={handleOpenLoreModal}
+            />
             
             {/* Player Debugger UI - F3 to toggle */}
-            <PlayerDebugger 
+            {isDebugVisible && <PlayerDebugger 
                 debugData={debugData}
                 playerState={playerState}
                 equippedWeapon={equippedWeapon}
                 animationState={animationState}
-                isVisible={isDebugVisible}
-            />
+                isVisible={true}
+            />}
             
             <KeyboardControls map={controlMap}>
                  <DrawInputHandler startDrawing={startDrawing} endDrawing={endDrawing} />
-                 <Canvas camera={{ fov: 75 }} shadows gl={{ antialias: true, powerPreference: 'high-performance' }}>
-                     <CameraLookController isPointerLocked={isPointerLocked} touchLookInputRef={touchLookInputRef} />
-                     <PlayerPositionTracker playerRef={playerRef} playerPos={playerPos} />
-                     <FPVCameraController playerRef={playerRef} isActive={isPointerLocked || IS_TOUCH_DEVICE} />
+                 <Canvas camera={{ fov: 75, position: [0, 5, 10] }} shadows gl={{ antialias: true, powerPreference: 'high-performance' }}>
                      
                      <Sky sunPosition={[10, 10, 5]} />
                      
-                     {/* New Atmospheric Lighting */}
-                     <fog attach="fog" args={['#2d202b', 15, 70]} />
-                     <ambientLight intensity={0.15} color="#ff8844" />
-                     <hemisphereLight color={0x4c549e} groundColor={0x702d1d} intensity={0.5} />
+                     {/* Proper Global Lighting */}
+                     <fog attach="fog" args={['#2d202b', 30, 100]} />
+                     <ambientLight intensity={0.6} color="#ffffff" />
+                     <hemisphereLight color={0x87ceeb} groundColor={0x4a4a4a} intensity={0.8} />
                      <directionalLight
-                         position={[10, 10, 5]}
-                         intensity={1.5}
-                         color="#b8d5ff"
+                         position={[20, 20, 10]}
+                         intensity={2.0}
+                         color="#ffffff"
                          castShadow
                          shadow-mapSize-width={2048}
                          shadow-mapSize-height={2048}
-                         shadow-camera-far={100}
-                         shadow-camera-left={-50}
-                         shadow-camera-right={50}
-                         shadow-camera-top={50}
-                         shadow-camera-bottom={-50}
+                         shadow-camera-far={150}
+                         shadow-camera-left={-100}
+                         shadow-camera-right={100}
+                         shadow-camera-top={100}
+                         shadow-camera-bottom={-100}
+                     />
+                     
+                     {/* Additional fill lighting */}
+                     <directionalLight
+                         position={[-10, 15, -10]}
+                         intensity={0.5}
+                         color="#ff8844"
                      />
 
                      <Physics gravity={[0, -20, 0]}>
-                        <Ground heightData={heightData} />
-                        <ScatteredAssets heightData={heightData} />
-                        <FPVPlayer playerRef={playerRef} touchMoveInput={touchMoveInput} spawnPosition={playerSpawnPosition} />
+                        <CachedMapLoader onMapLoaded={handleMapLoaded} />
+                        {isMapLoaded && heightData && (
+                            <>
+                                <Ground heightData={heightData} />
+                                <ScatteredAssets heightData={heightData} />
+                            </>
+                        )}
+                        
+                        {/* Fallback ground if map doesn't load */}
+                        {!isMapLoaded && (
+                            <mesh position={[0, -5, 0]} receiveShadow>
+                                <boxGeometry args={[100, 1, 100]} />
+                                <meshStandardMaterial color="#654321" />
+                            </mesh>
+                        )}
+                        
+                        {/* Always render player */}
+                        <UnifiedPlayerController 
+                            playerRef={playerRef}
+                            position={[playerSpawnPosition.x, playerSpawnPosition.y, playerSpawnPosition.z]}
+                            isDead={playerState.isDead}
+                            isModalOpen={isLoreModalOpen || isInventoryOpen}
+                            isPointerLocked={isPointerLocked}
+                            touchMoveInput={touchMoveInput}
+                            touchLookInputRef={touchLookInputRef}
+                            playerPos={playerPos}
+                        />
+                        
+                        {/* Test cube to verify rendering */}
+                        <mesh position={[5, 2, 5]} castShadow>
+                            <boxGeometry args={[2, 2, 2]} />
+                            <meshStandardMaterial color="#ff0000" />
+                        </mesh>
                         {enemies.map(enemy => <RockMonster key={enemy.id} {...enemy} playerPos={playerPos} />)}
                         <EffectsManager />
                         
                         {/* Debug tracker - runs inside Canvas with useFrame */}
-                        <PlayerDebugTracker 
-                            playerRef={playerRef}
-                            heightData={heightData}
-                            onUpdate={updateDebugData}
-                        />
+                        {heightData && (
+                            <PlayerDebugTracker 
+                                playerRef={playerRef}
+                                heightData={heightData}
+                                onUpdate={updateDebugData}
+                            />
+                        )}
                         {triggerFire && equippedWeapon.type === WeaponType.HitscanChain && (
                            <ChainLightningHandler
                                weaponStats={equippedWeapon.stats}

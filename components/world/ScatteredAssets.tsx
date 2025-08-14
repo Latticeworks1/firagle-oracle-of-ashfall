@@ -49,25 +49,25 @@ const ScatteredAssets: React.FC<ScatteredAssetsProps> = ({ heightData }) => {
     const [processedBush, setProcessedBush] = useState<{ mesh: THREE.Mesh, scaleFactor: number } | null>(null);
 
     useEffect(() => {
-        // Load tree asset (currently using rock as placeholder)
-        if (ENVIRONMENT_ASSETS['petrified_tree']) {
-            assetManager.load('petrified_tree').then(model => {
-                const processed = processModel(model, TARGET_TREE_HEIGHT, '#5c473c');
-                if(processed) setProcessedTree(processed);
-            }).catch(error => {
-                console.warn('Failed to load tree asset, terrain will show rocks only:', error);
-            });
-        }
+        // Create procedural tree geometry - no heavy GLB loading
+        const treeGeometry = new THREE.ConeGeometry(1, TARGET_TREE_HEIGHT, 8);
+        treeGeometry.translate(0, TARGET_TREE_HEIGHT / 2, 0);
+        const treeMaterial = new THREE.MeshStandardMaterial({ 
+            color: '#2d1a0f', 
+            roughness: 0.9 
+        });
+        const treeMesh = new THREE.Mesh(treeGeometry, treeMaterial);
+        setProcessedTree({ mesh: treeMesh, scaleFactor: 1 });
 
-        // Load bush asset
-        if (ENVIRONMENT_ASSETS['latt_bush']) {
-            assetManager.load('latt_bush').then(model => {
-                const processed = processModel(model, TARGET_BUSH_HEIGHT, '#2a4d34');
-                if(processed) setProcessedBush(processed);
-            }).catch(error => {
-                console.warn('Failed to load bush asset, terrain will show rocks only:', error);
-            });
-        }
+        // Create procedural bush geometry  
+        const bushGeometry = new THREE.SphereGeometry(TARGET_BUSH_HEIGHT * 0.8, 8, 6);
+        bushGeometry.translate(0, TARGET_BUSH_HEIGHT / 2, 0);
+        const bushMaterial = new THREE.MeshStandardMaterial({ 
+            color: '#1a3d2e', 
+            roughness: 0.8 
+        });
+        const bushMesh = new THREE.Mesh(bushGeometry, bushMaterial);
+        setProcessedBush({ mesh: bushMesh, scaleFactor: 1 });
     }, []);
 
     const { rockInstances, treeInstances, bushInstances } = useMemo(() => {

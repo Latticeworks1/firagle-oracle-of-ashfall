@@ -6,84 +6,22 @@ import { Html } from '@react-three/drei';
 import type { UserData, Enemy, PlayerTookDamagePayload } from '../../types';
 import { ENEMY_AGGRO_RANGE, ENEMY_SPEED, ENEMY_ATTACK_RANGE, ENEMY_ATTACK_COOLDOWN, ENEMY_DAMAGE } from '../../constants';
 import { eventBus } from '../../systems/eventBus';
-
-const HealthBar: React.FC<{ health: number; maxHealth: number }> = ({ health, maxHealth }) => {
-  const healthPercentage = (health / maxHealth) * 100;
-  const color = healthPercentage > 50 ? '#4CAF50' : healthPercentage > 25 ? '#FFC107' : '#F44336';
-  return (
-    <div style={{ width: '80px', height: '8px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid #333', borderRadius: '2px', transform: 'translateX(-50%)' }}>
-      <div style={{ width: `${healthPercentage}%`, height: '100%', backgroundColor: color, transition: 'width 0.2s' }} />
-    </div>
-  );
-};
+import { modelCache } from '../../systems/ModelCache';
+import HealthBar from '../ui/HealthBar';
 
 interface RockMonsterProps extends Omit<Enemy, 'onDeath'> {
   playerPos: THREE.Vector3;
 }
 
-/* ——— rock shader helper: standard material with crack emissive + noise displacement ——— */
+// Simple, working rock material - no custom shaders
 function makeRockMaterial(base = new THREE.Color('#5c544d'), crack = new THREE.Color('#ff7a33')) {
-  const mat = new THREE.MeshStandardMaterial({
+  return new THREE.MeshStandardMaterial({
     color: base,
     roughness: 0.95,
     metalness: 0.05,
-    emissive: crack.clone().multiplyScalar(0.0),
-    emissiveIntensity: 1.0
+    emissive: crack.clone().multiplyScalar(0.1),
+    emissiveIntensity: 0.3
   });
-  // small uniforms carried on material; advanced but stays MeshStandardMaterial
-  (mat as any).userData.uTime = { value: 0 };
-  (mat as any).userData.uCrack = { value: 1.0 };
-
-  mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uTime = (mat as any).userData.uTime;
-    shader.uniforms.uCrack = (mat as any).userData.uCrack;
-
-    // inject noise + crack logic
-    shader.vertexShader = `
-      varying vec3 vPos;
-      uniform float uTime;
-      // cheap 3D noise
-      float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7, 74.7)))*43758.5453); }
-      float noise(vec3 x){
-        vec3 i = floor(x), f = fract(x);
-        float n = mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
-                          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-                      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-                          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
-        return n;
-      }
-    ` + shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      `
-        vPos = position;
-        // layered fbm-ish wobble for breathing mineral
-        float n = noise(position * 2.4 + vec3(0.0, uTime*0.35, 0.0));
-        float disp = (n - 0.5) * 0.035; // gentle
-        vec3 transformed = position + normal * disp;
-      `
-    ).replace(
-      '#include <common>',
-      '#include <common>\nvarying vec3 vPos; uniform float uTime;'
-    );
-
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <common>',
-      '#include <common>\nvarying vec3 vPos; uniform float uTime; uniform float uCrack;'
-    ).replace(
-      '#include <dithering_fragment>',
-      `
-        // procedural crack lines: threshold a high-frequency function of position
-        float bands = sin(vPos.x*12.0) * sin(vPos.y*10.0) * sin(vPos.z*14.0);
-        float crackMask = smoothstep(0.985, 0.991, abs(bands));
-        // pulse emissive slightly
-        float pulse = 0.85 + 0.15 * sin(uTime*3.0);
-        outgoingLight += emissiveColor * crackMask * uCrack * pulse;
-        #include <dithering_fragment>
-      `
-    );
-    (mat as any).userData.shader = shader;
-  };
-  return mat;
 }
 
 const RockMonster: React.FC<RockMonsterProps> = ({ id, initialPosition, health, maxHealth, playerPos }) => {
@@ -135,9 +73,7 @@ const RockMonster: React.FC<RockMonsterProps> = ({ id, initialPosition, health, 
     const monsterPos = bodyRef.current.translation();
     const distance = playerPos.distanceTo(monsterPos);
 
-    // tick rock shader time
-    const s1 = (rockMat as any).userData?.uTime; if (s1) s1.value += delta;
-    const s2 = (plateMat as any).userData?.uTime; if (s2) s2.value += delta;
+    // No shader time ticking needed - using simple materials
 
     // idle breathing: scale y slightly
     const t = performance.now() * 0.001;
@@ -262,7 +198,16 @@ const RockMonster: React.FC<RockMonsterProps> = ({ id, initialPosition, health, 
       </group>
 
       <Html position={[0, 1.5, 0]} center>
-        <HealthBar health={health} maxHealth={maxHealth} />
+        <div className="enemy-health-container">
+          <HealthBar 
+            current={health} 
+            max={maxHealth} 
+            type="enemy" 
+            size="compact" 
+            showText={false}
+            isCritical={health < maxHealth * 0.3}
+          />
+        </div>
       </Html>
     </RigidBody>
   );

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Group } from 'three';
 import * as THREE from 'three';
@@ -19,105 +17,98 @@ interface FPVViewProps {
     animationState: AnimationState;
 }
 
+const RECOIL_OFFSET_Z = 0.2;
+const RECOIL_ROTATION_X = -0.3;
+const RECOIL_DAMPING = 10;
+const PARTICLE_BURST_COUNT = 800;
+const PARTICLE_BURST_SPEED = 7;
+
 const FPVView: React.FC<FPVViewProps> = ({ staffRef, headRef, equippedWeapon, animationState }) => {
     const { camera } = useThree();
     const [model, setModel] = useState<Group | null>(null);
+
     const cameraGroupRef = useRef<Group>(null);
     const recoilRef = useRef<Group>(null);
     const particlesRef = useRef<EmitterAPI>(null);
 
-    // Recoil effect
+    const isProcedural = equippedWeapon.modelId.startsWith('procedural_');
+    const isLightningStaff = equippedWeapon.type === WeaponType.HitscanChain;
+    const isCharging = animationState === AnimationState.Charging || animationState === AnimationState.Charged;
+
+    // Handle recoil impulse
     useEffect(() => {
         if (animationState === AnimationState.Discharging && recoilRef.current) {
-            // Apply impulse
-            recoilRef.current.position.z = 0.2; // Kick back
-            recoilRef.current.rotation.x = -0.3; // Tilt up
+            recoilRef.current.position.z = RECOIL_OFFSET_Z;
+            recoilRef.current.rotation.x = RECOIL_ROTATION_X;
         }
     }, [animationState]);
 
-     // Particle effects and Discharge controller
+    // Particle effects and discharge control
     useEffect(() => {
         const emitter = particlesRef.current;
         if (!emitter || !headRef.current) return;
 
-        const isLightningStaff = equippedWeapon.type === WeaponType.HitscanChain;
-        const isCharging = animationState === AnimationState.Charging || animationState === AnimationState.Charged;
+        emitter.pause(!(isLightningStaff && isCharging));
 
-        // Continuous effect for lightning staff charging
-        if (isLightningStaff) {
-            emitter.pause(!isCharging); // if charging, un-pause. if not, pause.
-        } else {
-            emitter.pause(true); // Always paused for other staves unless bursting
-        }
-
-        // Effects on firing for ALL staves
         if (animationState === AnimationState.Discharging) {
-            const pos = headRef.current.getWorldPosition(new THREE.Vector3());
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir); // Fire in the direction camera is facing
-            
-            // Particle Burst
-            emitter.emit(800, pos, dir, 7);
-            
-            // Muzzle Flash / Discharge Effect
-            const dischargeColor = isLightningStaff 
-                ? new THREE.Color('#944dff') 
+            const position = headRef.current.getWorldPosition(new THREE.Vector3());
+            const direction = camera.getWorldDirection(new THREE.Vector3());
+
+            emitter.emit(PARTICLE_BURST_COUNT, position, direction, PARTICLE_BURST_SPEED);
+
+            const dischargeColor = isLightningStaff
+                ? new THREE.Color('#944dff')
                 : new THREE.Color(COLOR_PROJECTILE);
 
             eventBus.dispatch<EffectTriggerPayload>('EFFECT_TRIGGERED', {
                 id: THREE.MathUtils.generateUUID(),
                 type: 'discharge',
-                position: pos,
+                position,
                 color: dischargeColor,
             });
         }
-        
-    }, [animationState, equippedWeapon.type, headRef, camera]);
+    }, [animationState, isLightningStaff, isCharging, headRef, camera]);
 
-
+    // Keep camera group synced to actual camera
     useFrame((_, delta) => {
         if (cameraGroupRef.current) {
             cameraGroupRef.current.quaternion.copy(camera.quaternion);
             cameraGroupRef.current.position.copy(camera.position);
         }
 
-        // Dampen recoil back to idle
+        // Smooth recoil return
         if (recoilRef.current) {
-            recoilRef.current.position.lerp(new THREE.Vector3(0, 0, 0), delta * 10);
-            recoilRef.current.rotation.x = THREE.MathUtils.lerp(recoilRef.current.rotation.x, 0, delta * 10);
+            recoilRef.current.position.lerp(new THREE.Vector3(0, 0, 0), delta * RECOIL_DAMPING);
+            recoilRef.current.rotation.x = THREE.MathUtils.lerp(recoilRef.current.rotation.x, 0, delta * RECOIL_DAMPING);
         }
     });
 
-    // Check if weapon uses procedural generation (not loaded assets)
-    const isProcedural = equippedWeapon.modelId.startsWith('procedural_');
-
+    // Load non-procedural weapon models
     useEffect(() => {
         if (isProcedural) {
             setModel(null);
             return;
-        };
+        }
 
         let isMounted = true;
         setModel(null);
 
-        assetManager.load(equippedWeapon.modelId).then(loadedModel => {
-            if (isMounted) {
+        assetManager.load(equippedWeapon.modelId)
+            .then(loadedModel => {
+                if (!isMounted) return;
                 setModel(loadedModel);
-                const headNode = loadedModel.getObjectByName('HeadAssembly');
-                if (headNode && headRef && 'current' in headRef) {
-                    (headRef as React.MutableRefObject<Group | null>).current = headNode as Group;
-                } else if (headRef && 'current' in headRef) {
-                     (headRef as React.MutableRefObject<Group | null>).current = loadedModel;
-                }
-            }
-        }).catch(error => console.error(error));
+
+                const headNode = loadedModel.getObjectByName('HeadAssembly') as Group;
+                (headRef as React.MutableRefObject<Group | null>).current = headNode || loadedModel;
+            })
+            .catch(console.error);
 
         return () => { isMounted = false; };
     }, [equippedWeapon.modelId, headRef, isProcedural]);
 
     return (
         <group ref={cameraGroupRef}>
-            <group position={[0.4, -0.55, -1.2]} rotation={[0, Math.PI - 0.5, 0]}>
+            <group position={[0, 0, -1.2]} rotation={[0, Math.PI, 0]}>
                 <group ref={recoilRef}>
                     {isProcedural ? (
                         <Firagle
@@ -127,19 +118,15 @@ const FPVView: React.FC<FPVViewProps> = ({ staffRef, headRef, equippedWeapon, an
                             weaponStats={equippedWeapon.stats}
                         />
                     ) : (
-                       model && <primitive object={model} ref={staffRef} />
+                        model && <primitive object={model} ref={staffRef} />
                     )}
                 </group>
             </group>
-            
-            {/* The particle system is rendered here, outside the staff's transform group. 
-                Its shader calculates world positions, so it ignores parent transforms. 
-                The `staffTip` prop provides the world-space coordinates for emission.
-             */}
+
             <GPUStaffParticles
                 ref={particlesRef}
                 staffTip={headRef.current}
-                continuous={equippedWeapon.type === WeaponType.HitscanChain}
+                continuous={isLightningStaff}
             />
         </group>
     );

@@ -41,6 +41,7 @@ class AssetManager {
                     url,
                     (gltf) => {
                         const model = gltf.scene;
+                        this.processModel(model, modelId);
                         this.cache.set(modelId, model);
                         resolve(model);
                         this.loadingPromises.delete(modelId);
@@ -56,6 +57,7 @@ class AssetManager {
                 this.fbxLoader.load(
                     url,
                     (fbx) => {
+                        this.processModel(fbx, modelId);
                         this.cache.set(modelId, fbx);
                         resolve(fbx);
                         this.loadingPromises.delete(modelId);
@@ -80,6 +82,56 @@ class AssetManager {
         // Await the load and return a clone
         const loadedModel = await loadPromise;
         return loadedModel.clone();
+    }
+
+    private processModel(model: THREE.Group, modelId: string): void {
+        // Fix materials and add shadows
+        model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                // Enable shadows
+                child.castShadow = true;
+                child.receiveShadow = true;
+
+                // Fix black materials
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => this.fixMaterial(mat, modelId));
+                    } else {
+                        this.fixMaterial(child.material, modelId);
+                    }
+                }
+            }
+        });
+
+        // Add userData for identification
+        model.userData = { 
+            type: 'environment', 
+            assetId: modelId,
+            processedAt: Date.now()
+        };
+    }
+
+    private fixMaterial(material: THREE.Material, modelId: string): void {
+        if (material instanceof THREE.MeshStandardMaterial) {
+            // If material appears black/unlit, give it proper colors
+            if (material.color.getHex() === 0x000000) {
+                // Default colors based on asset type
+                if (modelId.includes('tree')) {
+                    material.color.setHex(0x4a3e2a); // Brown tree
+                } else if (modelId.includes('bush')) {
+                    material.color.setHex(0x2d4a2d); // Green bush
+                } else {
+                    material.color.setHex(0x666666); // Gray default
+                }
+            }
+
+            // Ensure proper lighting response
+            material.roughness = Math.max(material.roughness, 0.3);
+            material.metalness = Math.min(material.metalness, 0.2);
+            
+            // Force material update
+            material.needsUpdate = true;
+        }
     }
 }
 
