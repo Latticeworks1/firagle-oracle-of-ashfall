@@ -1,11 +1,9 @@
 
 
-import './styles/hud.css';
-
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
-import { KeyboardControls, PointerLockControls, useKeyboardControls, Sky } from '@react-three/drei';
+import { KeyboardControls, PointerLockControls, useKeyboardControls } from '@react-three/drei';
 import type { RapierRigidBody } from '@react-three/rapier';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
@@ -30,7 +28,8 @@ import { useEnemyManager } from './hooks/useEnemyManager';
 import { getSafeSpawnPosition } from './utils/noise';
 
 // Map System
-import CachedMapLoader from './components/world/CachedMapLoader';
+import GLBTerrainLoader from './components/world/GLBTerrainLoader';
+import FBXTerrainLoader from './components/world/FBXTerrainLoader';
 
 // UI Components
 import FPVUI from './components/ui/FPVUI';
@@ -42,14 +41,14 @@ import InventoryUI from './components/ui/InventoryUI';
 import GameHUD from './components/ui/GameHUD';
 import GestureDrawCanvas from './components/ui/GestureDrawCanvas';
 import PauseMenu from './components/ui/PauseMenu';
-import SimplePlayerProfileUI from './components/ui/SimplePlayerProfileUI';
+import PlayerProfileUI from './components/ui/PlayerProfileUI';
 
 // 3D Components
 import { Physics } from '@react-three/rapier';
 import EffectsManager from './systems/EffectsManager';
 import UnifiedPlayerController from './components/player/UnifiedPlayerController';
 import FPVView from './components/player/FPVView';
-import Ground from './components/world/Ground';
+// Ground component now part of GLBTerrainLoader
 import ScatteredAssets from './components/world/ScatteredAssets';
 import Fireball from './components/world/Fireball';
 import RockMonster from './components/enemy/RockMonster';
@@ -327,13 +326,12 @@ const App: React.FC = () => {
         setIsLoreModalOpen(false);
     }, [resetPlayer, resetEnemies, resetState]);
 
-    // Map loading callback
+    // Map loading callback - GLB terrain provides heightData
     const handleMapLoaded = useCallback((loadedHeightData: Float32Array) => {
         setHeightData(loadedHeightData);
         setIsMapLoaded(true);
-        console.log('Map loaded successfully with heightData length:', loadedHeightData.length);
-        console.log('Player spawn position:', playerSpawnPosition);
-    }, [playerSpawnPosition]);
+        console.log('GLB terrain loaded successfully with heightData length:', loadedHeightData.length);
+    }, []);
 
     // Debug data update callback
     const updateDebugData = useCallback((data: DebugData) => {
@@ -422,7 +420,7 @@ const App: React.FC = () => {
                 onOpenInventory={handleOpenInventory}
                 onOpenProfile={() => setIsProfileOpen(true)}
             />
-            <SimplePlayerProfileUI 
+            <PlayerProfileUI 
                 isOpen={isProfileOpen} 
                 onClose={() => setIsProfileOpen(false)} 
             />
@@ -450,101 +448,74 @@ const App: React.FC = () => {
             
             <KeyboardControls map={controlMap}>
                  <DrawInputHandler startDrawing={startDrawing} endDrawing={endDrawing} />
-                 <Canvas camera={{ fov: 75, position: [0, 5, 10] }} shadows gl={{ antialias: true, powerPreference: 'high-performance' }}>
-                     
-                     <Sky sunPosition={[10, 10, 5]} />
-                     
-                     {/* Proper Global Lighting */}
-                     <fog attach="fog" args={['#2d202b', 30, 100]} />
-                     <ambientLight intensity={0.6} color="#ffffff" />
-                     <hemisphereLight color={0x87ceeb} groundColor={0x4a4a4a} intensity={0.8} />
-                     <directionalLight
-                         position={[20, 20, 10]}
-                         intensity={2.0}
-                         color="#ffffff"
+                 <Canvas 
+                     camera={{ fov: 75, position: [0, 5, 10] }}
+                     style={{ width: '100vw', height: '100vh', display: 'block', backgroundColor: '#333' }}
+                     shadows
+                 >
+                     <ambientLight intensity={0.3} />
+                     <directionalLight 
+                         position={[10, 10, 5]} 
+                         intensity={1} 
                          castShadow
-                         shadow-mapSize-width={2048}
-                         shadow-mapSize-height={2048}
-                         shadow-camera-far={150}
-                         shadow-camera-left={-100}
-                         shadow-camera-right={100}
-                         shadow-camera-top={100}
-                         shadow-camera-bottom={-100}
+                         shadow-mapSize-width={1024}
+                         shadow-mapSize-height={1024}
                      />
                      
-                     {/* Additional fill lighting */}
-                     <directionalLight
-                         position={[-10, 15, -10]}
-                         intensity={0.5}
-                         color="#ff8844"
-                     />
-
+                     {/* TEST: Simple mesh to see if Canvas renders */}
+                     <mesh position={[0, 0, 0]}>
+                         <boxGeometry args={[5, 5, 5]} />
+                         <meshBasicMaterial color="red" />
+                     </mesh>
+                     
                      <Physics gravity={[0, -20, 0]}>
-                        <CachedMapLoader onMapLoaded={handleMapLoaded} />
-                        {isMapLoaded && heightData && (
-                            <>
-                                <Ground heightData={heightData} />
-                                <ScatteredAssets heightData={heightData} />
-                            </>
-                        )}
-                        
-                        {/* Fallback ground if map doesn't load */}
-                        {!isMapLoaded && (
-                            <mesh position={[0, -5, 0]} receiveShadow>
-                                <boxGeometry args={[100, 1, 100]} />
-                                <meshStandardMaterial color="#654321" />
-                            </mesh>
-                        )}
-                        
-                        {/* Always render player */}
-                        <UnifiedPlayerController 
-                            playerRef={playerRef}
-                            position={[playerSpawnPosition.x, playerSpawnPosition.y, playerSpawnPosition.z]}
-                            isDead={playerState.isDead}
-                            isModalOpen={isLoreModalOpen || isInventoryOpen}
-                            isPointerLocked={isPointerLocked}
-                            touchMoveInput={touchMoveInput}
-                            touchLookInputRef={touchLookInputRef}
-                            playerPos={playerPos}
-                        />
-                        
-                        {/* Test cube to verify rendering */}
-                        <mesh position={[5, 2, 5]} castShadow>
-                            <boxGeometry args={[2, 2, 2]} />
-                            <meshStandardMaterial color="#ff0000" />
-                        </mesh>
-                        {enemies.map(enemy => <RockMonster key={enemy.id} {...enemy} playerPos={playerPos} />)}
-                        <EffectsManager />
-                        
-                        {/* Debug tracker - runs inside Canvas with useFrame */}
-                        {heightData && (
-                            <PlayerDebugTracker 
-                                playerRef={playerRef}
-                                heightData={heightData}
-                                onUpdate={updateDebugData}
-                            />
-                        )}
-                        {triggerFire && equippedWeapon.type === WeaponType.HitscanChain && (
-                           <ChainLightningHandler
-                               weaponStats={equippedWeapon.stats}
-                               staffTipRef={headRef}
-                               onComplete={() => setTriggerFire(false)}
-                           />
-                        )}
-                        <FPVView headRef={headRef} staffRef={staffRef} equippedWeapon={equippedWeapon} animationState={animationState} />
-                        {projectiles.map(p => <Fireball key={p.id} {...p} onExpire={handleExpireProjectile} />)}
+                         {/* FBX Swamp Terrain with physics and scattered assets */}
+                         <FBXTerrainLoader onMapLoaded={handleMapLoaded} fbxPath="/swamp.fbx" />
+                         
+                         {/* Commented out GLB terrain loader */}
+                         {/* <GLBTerrainLoader onMapLoaded={handleMapLoaded} /> */}
+                         
+                         {/* Player controller */}
+                         <UnifiedPlayerController 
+                             playerRef={playerRef}
+                             position={[playerSpawnPosition.x, playerSpawnPosition.y, playerSpawnPosition.z]}
+                             isDead={playerState.isDead}
+                             isModalOpen={isLoreModalOpen || isInventoryOpen}
+                             isPointerLocked={isPointerLocked}
+                             touchMoveInput={touchMoveInput}
+                             touchLookInputRef={touchLookInputRef}
+                             playerPos={playerPos}
+                         />
+                         
+                         {/* FPV weapon view */}
+                         <FPVView 
+                             headRef={headRef} 
+                             staffRef={staffRef} 
+                             equippedWeapon={equippedWeapon} 
+                             animationState={animationState} 
+                         />
+                         
+                         {/* Projectiles */}
+                         {projectiles.map(p => <Fireball key={p.id} {...p} onExpire={handleExpireProjectile} />)}
+                         
+                         {/* Enemies */}
+                         {enemies.map(enemy => <RockMonster key={enemy.id} {...enemy} playerPos={playerPos} />)}
+                         
+                         {/* Effects */}
+                         <EffectsManager />
                      </Physics>
-
-                    {triggerFire && equippedWeapon.type === WeaponType.Projectile && (
-                        <ProjectileHandler
-                            weaponStats={equippedWeapon.stats}
-                            effects={equippedWeapon.effects}
-                            staffTipRef={headRef}
-                            onComplete={() => setTriggerFire(false)}
-                        />
+                     
+                     {/* Pointer lock controls */}
+                     {!IS_TOUCH_DEVICE && (
+                         <PointerLockControls 
+                             ref={controlsRef} 
+                             onLock={() => setIsPointerLocked(true)} 
+                             onUnlock={() => { 
+                                 setIsPointerLocked(false); 
+                                 if(isDrawing) endDrawing(); 
+                             }} 
+                         />
                      )}
-                    <ChargingSigil animationState={animationState} equippedWeapon={equippedWeapon} />
-                    {!IS_TOUCH_DEVICE && <PointerLockControls ref={controlsRef} onLock={() => setIsPointerLocked(true)} onUnlock={() => { setIsPointerLocked(false); if(isDrawing) endDrawing(); }} />}
                  </Canvas>
             </KeyboardControls>
             
